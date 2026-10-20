@@ -350,7 +350,7 @@ const App: React.FC = () => {
       inputAudioCtxRef.current = inputCtx;
       outputAudioCtxRef.current = outputCtx;
       const token = await getLiveToken();
-      const ai = new GoogleGenAI({ apiKey: token });
+      const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
