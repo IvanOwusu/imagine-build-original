@@ -28,7 +28,9 @@ import {
   promptEditImage,
   generate3DModelFile,
   generateGLTFModelFile,
-  getTutorialContent
+  getTutorialContent,
+  refineRealism,
+  getLiveToken
 } from './services/gemini';
 import { GoogleGenAI, Modality, LiveServerMessage, Blob as GenAIBlob } from '@google/genai';
 
@@ -347,7 +349,8 @@ const App: React.FC = () => {
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       inputAudioCtxRef.current = inputCtx;
       outputAudioCtxRef.current = outputCtx;
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const token = await getLiveToken();
+      const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
@@ -428,15 +431,9 @@ const App: React.FC = () => {
     if (!generatedDesign || isGenerating) return;
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const matStr = generatedDesign.preferences.materials.join(", ");
-      const refined = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: `Hyper-realistic architectural visual of ${generatedDesign.name}. Style: ${generatedDesign.preferences.style}. Materials: ${matStr}.` }] }
-      });
-      const part = refined.candidates[0].content.parts.find((p: any) => p.inlineData);
-      if (part?.inlineData) {
-        setGeneratedDesign({...generatedDesign, visualizations: {...generatedDesign.visualizations, exterior: `data:image/png;base64,${part.inlineData.data}`}});
+      const refinedImage = await refineRealism(generatedDesign);
+      if (refinedImage) {
+        setGeneratedDesign({...generatedDesign, visualizations: {...generatedDesign.visualizations, exterior: refinedImage}});
       }
     } finally { setIsGenerating(false); }
   };
