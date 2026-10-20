@@ -2,12 +2,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 const reply=(res:any,status:number,body:unknown)=>res.status(status).setHeader("Cache-Control","no-store").json(body);
 const buckets=new Map<string,{n:number,t:number}>();
 function rate(req:any){const ip=String(req.headers["x-forwarded-for"]||req.socket?.remoteAddress||"unknown").split(",")[0];const now=Date.now();let b=buckets.get(ip);if(!b||now-b.t>60000)b={n:0,t:now};b.n++;buckets.set(ip,b);return b.n<=12}
-function imageData(v:string){if(typeof v!=="string"||v.length>7000000)throw new Error("Image is missing or too large.");const m=v.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\r\n]+)$/);if(!m)throw new Error("Upload a PNG, JPEG, or WebP image.");return {mimeType:m[1],data:m[2].replace(/\s/g,"")}}
+function imageData(v:string){if(typeof v!=="string"||v.length>3500000)throw new Error("Image is missing or exceeds the upload limit.");const m=v.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\r\n]+)$/);if(!m)throw new Error("Upload a PNG, JPEG, or WebP image.");return {mimeType:m[1],data:m[2].replace(/\s/g,"")}}
 function imageOut(r:any){const p=r?.candidates?.[0]?.content?.parts?.find((x:any)=>x.inlineData);return p?.inlineData?`data:${p.inlineData.mimeType||"image/png"};base64,${p.inlineData.data}`:null}
 export default async function handler(req:any,res:any){
  if(req.method!=="POST")return reply(res,405,{error:"Method not allowed"});
  if(!rate(req))return reply(res,429,{error:"Too many requests. Wait a minute and retry."});
- const raw=typeof req.body==="string"?req.body:JSON.stringify(req.body||{});if(raw.length>8*1024*1024)return reply(res,413,{error:"Request is too large."});
+ const raw=typeof req.body==="string"?req.body:JSON.stringify(req.body||{});if(raw.length>4*1024*1024)return reply(res,413,{error:"Request is too large."});
  if(!process.env.GEMINI_API_KEY)return reply(res,503,{error:"AI service is not configured on the server."});
  try{
  const b=typeof req.body==="string"?JSON.parse(req.body):(req.body||{});const ai=new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
